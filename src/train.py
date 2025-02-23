@@ -1,5 +1,6 @@
 import torch
 import torch.optim as optim
+import os
 from torch.utils.tensorboard import SummaryWriter
 from dataset_loader import get_data_loaders
 from model import *
@@ -57,25 +58,28 @@ class Trainer:
         return {'loss': avg_loss, 'accuracy': accuracy}
 
 
-    def evaluate(self):
+    @torch.no_grad()
+    def evaluate(self, loader=None):
         self.model.eval()
         total_loss = 0
         correct = 0
         total = 0
-        with torch.no_grad():
-            for images, labels in self.val_loader:
-                images, labels = images.to(self.device), labels.to(self.device)
-                outputs = self.model(images)
-                outputs = outputs.view(-1)
-                loss = self.criterion(outputs, labels)
-                
-                predictions = (torch.sigmoid(outputs) > 0.5).float()
-                correct += (predictions == labels).sum().item()
-                total += labels.size(0)
-                total_loss += loss.item()
+        if loader is None:
+            assert self.val_loader is not None, 'loader was not given and self._eval_loader not set either!'
+            loader = self._eval_loader
+        for images, labels in loader:
+            images, labels = images.to(self.device), labels.to(self.device)
+            outputs = self.model(images)
+            outputs = outputs.view(-1)
+            loss = self.criterion(outputs, labels)
+            
+            predictions = (torch.sigmoid(outputs) > 0.5).float()
+            correct += (predictions == labels).sum().item()
+            total += labels.size(0)
+            total_loss += loss.item()
 
 
-        avg_loss = total_loss / len(self.val_loader)
+        avg_loss = total_loss / len(loader)
         accuracy = correct / total
 
         # Log metrics to TensorBoard
@@ -111,7 +115,7 @@ class Trainer:
                     'model_state_dict': self.model.state_dict(),
                     'optimizer_state_dict': self.optimizer.state_dict(),
                     'best_accuracy': best_val_accuracy,
-                }, self.checkpoints_path)
+                },  os.path.join(self.checkpoints_path,  f'best_model.pth'))
             else:
                 self.not_improved_count += 1
 
