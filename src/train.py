@@ -1,14 +1,16 @@
 import torch
 import torch.optim as optim
 import os
+import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 from dataset_loader import get_data_loaders
 from model import *
 
 #ResNet34(num_classes=2).to(device)
 class Trainer:
-    def __init__(self, model, epochs, patience:int=5):
+    def __init__(self, model, epochs, train_loader, val_loader, patience:int=5):
         self. device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print(f"Using device: {self.device}")
         self.model = model
         self.epochs = epochs
         self.patience = patience
@@ -21,7 +23,8 @@ class Trainer:
         self.best_epoch = 1
         self.current_epoch = 1
 
-        self.train_loader, self.val_loader = get_data_loaders(batch_size=32)
+        self.train_loader = train_loader
+        self.val_loader = val_loader
 
         self.writer = SummaryWriter('../logs')
 
@@ -64,6 +67,8 @@ class Trainer:
         total_loss = 0
         correct = 0
         total = 0
+        all_preds = []
+        all_labels = []
         if loader is None:
             assert self.val_loader is not None, 'loader was not given and self._eval_loader not set either!'
             loader = self._eval_loader
@@ -74,6 +79,8 @@ class Trainer:
             loss = self.criterion(outputs, labels)
             
             predictions = (torch.sigmoid(outputs) > 0.5).float()
+            all_preds.extend(predictions.cpu().numpy())
+            all_labels.extend(labels.numpy())
             correct += (predictions == labels).sum().item()
             total += labels.size(0)
             total_loss += loss.item()
@@ -85,11 +92,11 @@ class Trainer:
         # Log metrics to TensorBoard
         self.writer.add_scalar('Loss/val', avg_loss, self.current_epoch)
         self.writer.add_scalar('Accuracy/val', accuracy, self.current_epoch)
-        return {'loss': avg_loss, 'accuracy': accuracy}
+        return {'loss': avg_loss, 'accuracy': accuracy}, all_preds, all_labels 
         
     def train(self):
         self.not_improved_count = 0
-        best_eval_metric = float('-inf')
+        best_val_accuracy = float('-inf') 
 
         for epoch in range(self.start_epoch, self.epochs + 1):
             self.current_epoch = epoch
