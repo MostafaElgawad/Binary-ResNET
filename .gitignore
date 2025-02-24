@@ -1,1 +1,3 @@
-CastLabs/
+.CastLabs/
+.ipynb_checkpoints/
+*__pycache__/
