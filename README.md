@@ -28,7 +28,7 @@ This project implements a binary classification model using a ResNet architectur
 2. Create a virtual environment and install dependencies:
     ```bash
     python -m venv venv
-    source venv/bin/activate  # On Windows: venv\Scriptsctivate
+    source venv/bin/activate  # On Windows: venv\Scripts\ctivate
     pip install -r requirements.txt
     ```
 
