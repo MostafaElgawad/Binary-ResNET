@@ -1,17 +1,15 @@
 import torch
 import torch.optim as optim
 import os
-import numpy as np
+from os.path import join as ospj
 from torch.utils.tensorboard import SummaryWriter
-from dataset_loader import get_data_loaders
-from model import *
+from .model import *
 
-#ResNet34(num_classes=2).to(device)
 class Trainer:
     def __init__(self, model, epochs, train_loader, val_loader, patience:int=5):
-        self. device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Using device: {self.device}")
-        self.model = model
+        self.model = model.to(self.device)
         self.epochs = epochs
         self.patience = patience
         self.optimizer = optim.Adam(self.model.parameters(), lr=0.001)
@@ -26,9 +24,13 @@ class Trainer:
         self.train_loader = train_loader
         self.val_loader = val_loader
 
-        self.writer = SummaryWriter('../logs')
+        self.writer = SummaryWriter(ospj('logs'))
 
-        self.checkpoints_path ="../checkpoints" 
+        self.checkpoints_path = ospj(
+            "checkpoints","Best_Model"
+        )
+        if not os.path.exists(self.checkpoints_path):
+            os.makedirs(self.checkpoints_path)
 
     def _train_epoch(self):
         self.model.train()
@@ -37,11 +39,15 @@ class Trainer:
         total = 0
         for images, labels in self.train_loader:
             images, labels = images.to(self.device), labels.to(self.device)
+            labels = labels.float()
+
             self.optimizer.zero_grad()
             outputs = self.model(images)
             #flatten output to be fed to the BCE loss
             outputs = outputs.view(-1)
+
             loss = self.criterion(outputs, labels)
+
             loss.backward()
             self.optimizer.step()
 
@@ -71,16 +77,21 @@ class Trainer:
         all_labels = []
         if loader is None:
             assert self.val_loader is not None, 'loader was not given and self._eval_loader not set either!'
-            loader = self._eval_loader
+            loader = self.val_loader
         for images, labels in loader:
             images, labels = images.to(self.device), labels.to(self.device)
+            labels = labels.float()
+
             outputs = self.model(images)
             outputs = outputs.view(-1)
+
             loss = self.criterion(outputs, labels)
             
             predictions = (torch.sigmoid(outputs) > 0.5).float()
+
             all_preds.extend(predictions.cpu().numpy())
             all_labels.extend(labels.numpy())
+
             correct += (predictions == labels).sum().item()
             total += labels.size(0)
             total_loss += loss.item()
@@ -103,7 +114,7 @@ class Trainer:
             # train for one epoch then evaluate 
             train_metrics = self._train_epoch()
             #evalute
-            val_metrics = self.evaluate()
+            val_metrics, _ , _ = self.evaluate()
 
             #progress
             print(f'Epoch {epoch}/{self.epochs}:')
@@ -122,7 +133,7 @@ class Trainer:
                     'model_state_dict': self.model.state_dict(),
                     'optimizer_state_dict': self.optimizer.state_dict(),
                     'best_accuracy': best_val_accuracy,
-                },  os.path.join(self.checkpoints_path,  f'best_model.pth'))
+                },  os.path.join(self.checkpoints_path,'model.pth'))
             else:
                 self.not_improved_count += 1
 
@@ -133,3 +144,6 @@ class Trainer:
 
         self.writer.close()
         print(f'Training completed. Best validation accuracy: {best_val_accuracy:.4f} at epoch {self.best_epoch}')
+
+    def load_model(self, path=None):
+        self.model.load_state_dict(torch.load(path))

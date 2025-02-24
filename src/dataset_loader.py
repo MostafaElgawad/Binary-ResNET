@@ -2,11 +2,11 @@ import torch
 from torchvision import datasets
 from torch.utils.data import DataLoader
 
-from preprocessing import train_transform, test_transform
+from .preprocessing import train_transform, test_transform
 
-train_dir = "../data/train"
-val_dir = "../data/val"
-test_dir = "../data/test"
+train_dir = "data/train"
+val_dir = "data/val"
+test_dir = "data/test"
 
 
 train_dataset = datasets.ImageFolder(root=train_dir, transform=train_transform)
