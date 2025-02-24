@@ -23,7 +23,10 @@ class BasicBlock(nn.Module):
                                stride=1, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(planes)
 
+        # Skip connections help the model learn residual functions and facilitate better gradient flow in deep networks."
         self.shortcut = nn.Sequential()
+        # When the input and output dimensions are different (e.g., due to a stride change or expansion)
+        #  a 1×1 convolution is used in the shortcut path.
         if stride != 1 or in_planes != self.expansion*planes:
             self.shortcut = nn.Sequential(
                 nn.Conv2d(in_planes, self.expansion*planes,
@@ -44,11 +47,17 @@ class Bottleneck(nn.Module):
 
     def __init__(self, in_planes, planes, stride=1):
         super(Bottleneck, self).__init__()
+
+        # 1×1 convolution reduces the number of channels
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=1, bias=False)
+
         self.bn1 = nn.BatchNorm2d(planes)
+        # 3×3 convolution extracts features (like basic block)
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3,
                                stride=stride, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(planes)
+        # 1×1 convolution expands the number of channels back
+        # this is bottleneck. It was introduced in GoogleNet inception blocks, to allow for processing higher dimensionality with reduced computations
         self.conv3 = nn.Conv2d(planes, self.expansion *
                                planes, kernel_size=1, bias=False)
         self.bn3 = nn.BatchNorm2d(self.expansion*planes)
