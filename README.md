@@ -77,7 +77,7 @@ The model is based on the ResNet architecture with the following modifications:
 
 ## **Evaluation** <a name="evaluation"></a>
 ### **Results**
-![Confusion-matrix](.confusion matrix.png)
+![Confusion-matrix](confusion matrix.png)
 ### **Interpretation**
 * The model performs well for dogs but poorly for cats due to class imbalance.
 * Precision for cats is high, but recall is very low, indicating that the model rarely predicts cats.
